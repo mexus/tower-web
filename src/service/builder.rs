@@ -1,9 +1,10 @@
 use error::{IntoCatch, DefaultCatch};
+use futures::{Future, Stream};
 use middleware::Identity;
 use response::DefaultSerializer;
 use routing::{Resource, IntoResource, RoutedService};
 use service::NewWebService;
-use util::{BufStream, Chain};
+use util::{BufStream, Chain, Connection};
 use util::http::{HttpService, HttpMiddleware};
 
 use std::io;
@@ -378,5 +379,27 @@ impl<T, C, M> ServiceBuilder<T, C, M> {
           <T::Resource as Resource>::Future: Send,
     {
         ::run::run(addr, self.build_new_service())
+    }
+
+    /// Run the service in a non-blocking mode.
+    ///
+    /// The returned `Future` object must be polled in order to process the incoming requests.
+    pub fn serve<S>(self, incoming: S) -> impl Future<Item = (), Error = ()>
+    where S: Stream<Error = io::Error>,
+          S::Item: Connection + Send + 'static,
+          T: IntoResource<DefaultSerializer, ::run::LiftReqBody>,
+          C: IntoCatch<DefaultSerializer> + Send + 'static,
+          C::Catch: Send,
+          M: HttpMiddleware<RoutedService<T::Resource, C::Catch>, RequestBody = ::run::LiftReqBody> + Send + 'static,
+          M::Service: Send,
+          <M::Service as HttpService>::Future: Send,
+          M::ResponseBody: Send,
+          <M::ResponseBody as BufStream>::Item: Send,
+          T::Resource: Send + 'static,
+          <T::Resource as Resource>::Buf: Send,
+          <T::Resource as Resource>::Body: Send,
+          <T::Resource as Resource>::Future: Send,
+    {
+        ::run::serve(incoming, self.build_new_service())
     }
 }
