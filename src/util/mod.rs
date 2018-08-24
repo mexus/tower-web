@@ -7,11 +7,13 @@ pub mod http;
 pub mod tuple;
 
 mod chain;
+mod connection;
 mod never;
 mod sealed;
 
 pub use self::buf_stream::BufStream;
 pub use self::chain::Chain;
+pub use self::connection::Connection;
 
 pub(crate) use self::never::Never;
 pub(crate) use self::sealed::Sealed;
